@@ -952,8 +952,8 @@ async function submitAnswer(selectedIndex, selectedButton) {
   const damage = isCorrect ? Math.min(60, critical ? baseDamage + 20 : baseDamage) : 0;
 
   ui.answerFeedback.innerHTML = isCorrect
-    ? (critical ? \`<strong>CRITICAL!</strong> Chính xác — gây ${damage} sát thương!<br/><small>${escapeHtml(currentQuestion.explanation || '')}</small>\` : \`Chính xác — gây ${damage} sát thương!<br/><small>${escapeHtml(currentQuestion.explanation || '')}</small>\`)
-    : \`Chưa đúng. Đáp án là: <strong>${escapeHtml(currentQuestion.answers[currentQuestion.correctIndex])}</strong><br/><small>${escapeHtml(currentQuestion.explanation || '')}</small>\`;
+    ? (critical ? `<strong>CRITICAL!</strong> Chính xác — gây ${damage} sát thương!<br/><small>${escapeHtml(currentQuestion.explanation || '')}</small>` : `Chính xác — gây ${damage} sát thương!<br/><small>${escapeHtml(currentQuestion.explanation || '')}</small>`)
+    : `Chưa đúng. Đáp án là: <strong>${escapeHtml(currentQuestion.answers[currentQuestion.correctIndex])}</strong><br/><small>${escapeHtml(currentQuestion.explanation || '')}</small>`;
   ui.answerFeedback.classList.add(isCorrect ? "good" : "bad");
 
   try {
