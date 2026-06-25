@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#6c5ce7" />
+  <meta name="description" content="Trò chơi lớp học nhiều người cùng đánh boss với Firebase Realtime Database." />
+  <title>Class Boss Battle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page-bg" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+  </div>
+
+  <header class="topbar">
+    <button id="homeBtn" class="brand-button" type="button" aria-label="Về trang chủ">
+      <span class="brand-icon">⚔️</span>
+      <span>
+        <strong>Class Boss Battle</strong>
+        <small>Real-time classroom game</small>
+      </span>
+    </button>
+
+    <div class="topbar-actions">
+      <span id="connectionBadge" class="status-badge offline">Chưa kết nối</span>
+      <button id="audioBtn" class="icon-button" type="button" aria-label="Bật hoặc tắt âm thanh" title="Âm thanh">🔇</button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section id="configWarning" class="config-warning hidden" role="alert">
+      <strong>Chưa cấu hình Firebase.</strong>
+      Mở <code>script.js</code>, tìm <code>firebaseConfig</code> và thay bằng config của dự án Firebase.
+    </section>
+
+    <!-- HOME -->
+    <section id="homeScreen" class="screen active">
+      <div class="hero-card glass-card">
+        <div class="hero-copy">
+          <span class="eyebrow">GAME HỌC TẬP NHIỀU NGƯỜI</span>
+          <h1>Cả lớp hợp sức<br /><span>đánh bại Boss!</span></h1>
+          <p>
+            Giáo viên tạo phòng, học sinh nhập mã để tham gia. Trả lời đúng để gây sát thương,
+            theo dõi máu boss và bảng xếp hạng cập nhật tức thì.
+          </p>
+
+          <div class="role-actions">
+            <button id="goTeacherBtn" class="primary-button big-button" type="button">
+              <span>👩‍🏫</span>
+              <span><strong>Tôi là giáo viên</strong><small>Tạo và điều khiển phòng</small></span>
+            </button>
+            <button id="goStudentBtn" class="secondary-button big-button" type="button">
+              <span>🧑‍🎓</span>
+              <span><strong>Tôi là học sinh</strong><small>Nhập mã để tham gia</small></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-hidden="true">
+          <div class="hero-boss-ring">
+            <img src="assets/boss-dragon.svg" alt="" />
+          </div>
+          <div class="floating-card card-a">⚡ +35 DMG</div>
+          <div class="floating-card card-b">🏆 Top 1</div>
+          <div class="floating-card card-c">🔥 Combo x4</div>
+        </div>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card glass-card">
+          <span>🔐</span>
+          <h3>Phòng riêng cho từng lớp</h3>
+          <p>Mỗi mã phòng có dữ liệu, người chơi và bảng xếp hạng độc lập.</p>
+        </article>
+        <article class="feature-card glass-card">
+          <span>⚡</span>
+          <h3>Cập nhật thời gian thực</h3>
+          <p>Điểm, trạng thái online và máu boss thay đổi đồng thời trên mọi thiết bị.</p>
+        </article>
+        <article class="feature-card glass-card">
+          <span>🎯</span>
+          <h3>Học qua chiến đấu</h3>
+          <p>Trả lời câu hỏi đúng để tấn công; combo cao tạo nhiều sát thương hơn.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- TEACHER CREATE -->
+    <section id="teacherSetupScreen" class="screen">
+      <div class="form-card glass-card narrow-card">
+        <button class="text-button back-home" type="button">← Quay lại</button>
+        <span class="eyebrow">GIÁO VIÊN</span>
+        <h2>Tạo phòng chiến đấu</h2>
+        <p class="muted">Thiết lập nhanh trận đấu, sau đó chia sẻ mã phòng cho học sinh.</p>
+
+        <form id="createRoomForm" class="stack-form">
+          <label>
+            Tên giáo viên
+            <input id="teacherNameInput" type="text" maxlength="30" placeholder="Ví dụ: Cô Anna" required />
+          </label>
+          <label>
+            Tên lớp
+            <input id="classNameInput" type="text" maxlength="40" placeholder="Ví dụ: English 6A" required />
+          </label>
+
+          <div class="two-column-inputs">
+            <label>
+              Boss
+              <select id="bossTypeInput">
+                <option value="dragon">Rồng Lửa</option>
+                <option value="robot">Robot Khổng Lồ</option>
+                <option value="slime">Slime Vũ Trụ</option>
+              </select>
+            </label>
+            <label>
+              Máu tối đa
+              <select id="bossHpInput">
+                <option value="500">500 HP — lớp nhỏ</option>
+                <option value="1000" selected>1.000 HP — tiêu chuẩn</option>
+                <option value="2000">2.000 HP — lớp đông</option>
+                <option value="3000">3.000 HP — thử thách</option>
+              </select>
+            </label>
+          </div>
+
+          <button class="primary-button full-button" type="submit">Tạo phòng mới</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- STUDENT JOIN -->
+    <section id="studentJoinScreen" class="screen">
+      <div class="form-card glass-card narrow-card">
+        <button class="text-button back-home" type="button">← Quay lại</button>
+        <span class="eyebrow">HỌC SINH</span>
+        <h2>Tham gia phòng</h2>
+        <p class="muted">Nhập mã 6 ký tự giáo viên đã cung cấp và tên hiển thị của em.</p>
+
+        <form id="joinRoomForm" class="stack-form">
+          <label>
+            Mã phòng
+            <input id="roomCodeInput" class="room-code-input" type="text" maxlength="6" autocomplete="off" placeholder="ABC123" required />
+          </label>
+          <label>
+            Tên học sinh
+            <input id="studentNameInput" type="text" maxlength="24" placeholder="Ví dụ: Minh" required />
+          </label>
+          <button class="primary-button full-button" type="submit">Vào phòng</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- SHARED ROOM -->
+    <section id="roomScreen" class="screen">
+      <div class="room-header glass-card">
+        <div>
+          <span id="roleLabel" class="eyebrow">PHÒNG CHƠI</span>
+          <h2 id="roomClassName">English Class</h2>
+          <p id="roomTeacherName" class="muted">Giáo viên: —</p>
+        </div>
+
+        <div class="room-code-box">
+          <span>MÃ PHÒNG</span>
+          <strong id="roomCodeDisplay">------</strong>
+          <div>
+            <button id="copyCodeBtn" class="small-button" type="button">Sao chép</button>
+            <button id="copyLinkBtn" class="small-button" type="button">Link mời</button>
+          </div>
+        </div>
+
+        <button id="leaveRoomBtn" class="danger-outline-button" type="button">Rời phòng</button>
+      </div>
+
+      <div class="room-layout">
+        <section class="battle-column">
+          <div class="battle-card glass-card">
+            <div class="battle-topline">
+              <div>
+                <span id="gameStatusPill" class="game-status lobby">Đang chờ</span>
+                <h3 id="bossNameDisplay">Rồng Lửa</h3>
+              </div>
+              <div class="damage-summary">
+                <span>Tổng sát thương</span>
+                <strong id="totalDamageDisplay">0</strong>
+              </div>
+            </div>
+
+            <div class="boss-stage" id="bossStage">
+              <div class="boss-glow"></div>
+              <img id="bossImage" src="assets/boss-dragon.svg" alt="Boss" />
+              <div id="damageFloatLayer" class="damage-float-layer" aria-live="polite"></div>
+            </div>
+
+            <div class="hp-panel">
+              <div class="hp-label-row">
+                <span>❤️ BOSS HP</span>
+                <strong><span id="bossHpCurrent">1000</span> / <span id="bossHpMax">1000</span></strong>
+              </div>
+              <div class="hp-track" role="progressbar" aria-label="Máu boss" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+                <div id="bossHpBar" class="hp-fill"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Teacher controls -->
+          <div id="teacherControls" class="teacher-controls glass-card hidden">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">BẢNG ĐIỀU KHIỂN</span>
+                <h3>Điều khiển trận đấu</h3>
+              </div>
+              <span id="playerCountTeacher" class="count-chip">0 học sinh</span>
+            </div>
+
+            <div class="control-grid">
+              <button id="startGameBtn" class="primary-button" type="button">▶ Bắt đầu</button>
+              <button id="pauseGameBtn" class="secondary-button" type="button">⏸ Tạm dừng</button>
+              <button id="resetGameBtn" class="warning-button" type="button">↻ Chơi lại</button>
+              <button id="endGameBtn" class="danger-button" type="button">■ Kết thúc</button>
+            </div>
+
+            <label class="toggle-row">
+              <span>
+                <strong>Khóa phòng</strong>
+                <small>Không cho học sinh mới tham gia</small>
+              </span>
+              <input id="lockRoomToggle" type="checkbox" />
+              <span class="toggle-ui"></span>
+            </label>
+
+            <div class="teacher-note">
+              <strong>Luật chơi:</strong> Học sinh trả lời đúng để gây sát thương. Combo càng cao, sát thương càng lớn.
+              Khi HP boss về 0, người gây nhiều sát thương nhất đứng hạng 1.
+            </div>
+          </div>
+
+          <!-- Student quiz -->
+          <div id="studentGamePanel" class="student-game-panel glass-card hidden">
+            <div class="student-stats-row">
+              <div><span>Sát thương của em</span><strong id="myDamageDisplay">0</strong></div>
+              <div><span>Combo</span><strong id="myComboDisplay">x0</strong></div>
+              <div><span>Hạng</span><strong id="myRankDisplay">—</strong></div>
+            </div>
+
+            <div id="waitingPanel" class="waiting-panel">
+              <div class="waiting-icon">⏳</div>
+              <h3 id="waitingTitle">Đang chờ giáo viên bắt đầu</h3>
+              <p id="waitingMessage">Hãy sẵn sàng! Câu hỏi sẽ xuất hiện khi trận đấu bắt đầu.</p>
+            </div>
+
+            <div id="quizPanel" class="quiz-panel hidden">
+              <div class="quiz-meta">
+                <span id="questionCategory">English</span>
+                <span id="questionCounter">Câu 1</span>
+              </div>
+              <h3 id="questionText">Question</h3>
+              <div id="answerGrid" class="answer-grid"></div>
+              <p id="answerFeedback" class="answer-feedback" aria-live="polite"></p>
+            </div>
+          </div>
+        </section>
+
+        <aside class="leaderboard-card glass-card">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">REAL-TIME</span>
+              <h3>Bảng xếp hạng</h3>
+            </div>
+            <span id="onlineCount" class="online-chip">0 online</span>
+          </div>
+          <div id="leaderboardList" class="leaderboard-list">
+            <div class="empty-state">
+              <span>👥</span>
+              <p>Chưa có học sinh trong phòng.</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div id="victoryModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="victoryTitle">
+    <div class="victory-modal glass-card">
+      <div class="victory-burst">🏆</div>
+      <span class="eyebrow">BOSS DEFEATED!</span>
+      <h2 id="victoryTitle">Cả lớp đã chiến thắng!</h2>
+      <p id="victorySubtitle">Kết quả chung cuộc</p>
+      <div id="podium" class="podium"></div>
+      <button id="closeVictoryBtn" class="primary-button full-button" type="button">Xem bảng xếp hạng</button>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>

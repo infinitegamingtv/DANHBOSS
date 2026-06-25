@@ -1,0 +1,37 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$roomCode": {
+        ".read": "auth != null && $roomCode.matches(/^[A-Z2-9]{6}$/)",
+        "meta": {
+          ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid) || (data.exists() && data.child('hostUid').val() === auth.uid))",
+          ".validate": "newData.hasChildren(['hostUid','teacherName','className','bossType','bossName','maxBossHp','status','roomLocked','createdAt','startedAt','endedAt','hostOnline']) && newData.child('hostUid').isString() && newData.child('hostUid').val().length > 10 && newData.child('teacherName').isString() && newData.child('teacherName').val().length >= 2 && newData.child('teacherName').val().length <= 30 && newData.child('className').isString() && newData.child('className').val().length >= 2 && newData.child('className').val().length <= 40 && newData.child('bossType').isString() && (newData.child('bossType').val() === 'dragon' || newData.child('bossType').val() === 'robot' || newData.child('bossType').val() === 'slime') && newData.child('bossName').isString() && newData.child('bossName').val().length <= 40 && newData.child('maxBossHp').isNumber() && newData.child('maxBossHp').val() >= 100 && newData.child('maxBossHp').val() <= 100000 && newData.child('status').isString() && (newData.child('status').val() === 'lobby' || newData.child('status').val() === 'playing' || newData.child('status').val() === 'paused' || newData.child('status').val() === 'finished') && newData.child('roomLocked').isBoolean() && newData.child('createdAt').isNumber() && newData.child('startedAt').isNumber() && newData.child('endedAt').isNumber() && newData.child('hostOnline').isBoolean()"
+        },
+        "players": {
+          "$uid": {
+            "profile": {
+              ".write": "auth != null && ((auth.uid === $uid && ((data.exists()) || (!data.exists() && root.child('rooms').child($roomCode).child('meta').child('roomLocked').val() === false && root.child('rooms').child($roomCode).child('meta').child('status').val() !== 'finished'))) || root.child('rooms').child($roomCode).child('meta').child('hostUid').val() === auth.uid)",
+              ".validate": "newData.hasChildren(['name','joinedAt','avatar']) && newData.child('name').isString() && newData.child('name').val().length >= 2 && newData.child('name').val().length <= 24 && newData.child('joinedAt').isNumber() && newData.child('avatar').isNumber() && newData.child('avatar').val() >= 0 && newData.child('avatar').val() <= 7 && (!data.exists() || (newData.child('name').val() === data.child('name').val() && newData.child('joinedAt').val() === data.child('joinedAt').val() && newData.child('avatar').val() === data.child('avatar').val()))"
+            },
+            "presence": {
+              ".write": "auth != null && (auth.uid === $uid || root.child('rooms').child($roomCode).child('meta').child('hostUid').val() === auth.uid)",
+              ".validate": "newData.hasChildren(['online','lastSeen']) && newData.child('online').isBoolean() && newData.child('lastSeen').isNumber()"
+            },
+            "stats": {
+              ".write": "auth != null && ((auth.uid === $uid && root.child('rooms').child($roomCode).child('players').child($uid).child('profile').exists()) || root.child('rooms').child($roomCode).child('meta').child('hostUid').val() === auth.uid)",
+              ".validate": "newData.hasChildren(['damage','correct','wrong','combo','bestCombo','lastAttackAt']) && newData.child('damage').isNumber() && newData.child('damage').val() >= 0 && newData.child('damage').val() <= 1000000 && newData.child('correct').isNumber() && newData.child('correct').val() >= 0 && newData.child('wrong').isNumber() && newData.child('wrong').val() >= 0 && newData.child('combo').isNumber() && newData.child('combo').val() >= 0 && newData.child('bestCombo').isNumber() && newData.child('bestCombo').val() >= 0 && newData.child('lastAttackAt').isNumber() && (root.child('rooms').child($roomCode).child('meta').child('hostUid').val() === auth.uid || (!data.exists() && newData.child('damage').val() === 0 && newData.child('correct').val() === 0 && newData.child('wrong').val() === 0 && newData.child('combo').val() === 0 && newData.child('bestCombo').val() === 0 && newData.child('lastAttackAt').val() === 0) || (data.exists() && root.child('rooms').child($roomCode).child('meta').child('status').val() === 'playing' && newData.child('lastAttackAt').val() > data.child('lastAttackAt').val() && ((newData.child('damage').val() > data.child('damage').val() && newData.child('damage').val() <= data.child('damage').val() + 60 && newData.child('correct').val() === data.child('correct').val() + 1 && newData.child('wrong').val() === data.child('wrong').val() && newData.child('combo').val() === data.child('combo').val() + 1 && newData.child('bestCombo').val() >= data.child('bestCombo').val() && (newData.child('bestCombo').val() === data.child('bestCombo').val() || newData.child('bestCombo').val() === newData.child('combo').val())) || (newData.child('damage').val() === data.child('damage').val() && newData.child('correct').val() === data.child('correct').val() && newData.child('wrong').val() === data.child('wrong').val() + 1 && newData.child('combo').val() === 0 && newData.child('bestCombo').val() === data.child('bestCombo').val()))))"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

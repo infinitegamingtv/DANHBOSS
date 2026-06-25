@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 360" role="img" aria-label="Cute space slime boss">
+  <defs>
+    <linearGradient id="slime" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8cf0a7"/>
+      <stop offset="1" stop-color="#28b982"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="211" cy="325" rx="136" ry="21" fill="#286c5a" opacity=".18"/>
+  <path d="M78 272c0-37 24-61 42-83 19-24 18-52 28-77 12-31 34-56 65-56 36 0 56 28 68 59 9 24 8 50 27 73 20 24 43 46 43 84 0 46-38 67-139 67S78 318 78 272z" fill="url(#slime)"/>
+  <circle cx="147" cy="108" r="23" fill="#67dc97"/>
+  <circle cx="282" cy="89" r="17" fill="#67dc97"/>
+  <circle cx="316" cy="130" r="12" fill="#67dc97"/>
+  <ellipse cx="165" cy="205" rx="31" ry="39" fill="#fff"/>
+  <ellipse cx="258" cy="205" rx="31" ry="39" fill="#fff"/>
+  <circle cx="171" cy="211" r="13" fill="#263e43"/>
+  <circle cx="252" cy="211" r="13" fill="#263e43"/>
+  <circle cx="167" cy="205" r="4" fill="#fff"/>
+  <circle cx="248" cy="205" r="4" fill="#fff"/>
+  <path d="M170 271c23 19 55 19 80 0" fill="none" stroke="#116d58" stroke-width="12" stroke-linecap="round"/>
+  <path d="M195 279c10 10 23 10 33 0" fill="none" stroke="#ff98b6" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="122" cy="252" r="12" fill="#66d892" opacity=".8"/>
+  <circle cx="304" cy="254" r="16" fill="#66d892" opacity=".8"/>
+  <path d="M83 266c-31 5-48 25-41 42 8 18 33 15 57-4m237-38c31 5 48 25 41 42-8 18-33 15-57-4" fill="none" stroke="#28b982" stroke-width="25" stroke-linecap="round"/>
+</svg>

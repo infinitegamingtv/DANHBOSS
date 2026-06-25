@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 360" role="img" aria-label="Cute giant robot boss">
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#79d7ff"/>
+      <stop offset="1" stop-color="#5572e8"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="210" cy="328" rx="128" ry="20" fill="#38456e" opacity=".18"/>
+  <path d="M210 55V25" stroke="#56647c" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="210" cy="20" r="14" fill="#ff5f77"/>
+  <rect x="104" y="55" width="212" height="145" rx="48" fill="url(#metal)"/>
+  <rect x="128" y="84" width="164" height="78" rx="25" fill="#23304d"/>
+  <circle cx="169" cy="123" r="20" fill="#7ff5df"/>
+  <circle cx="251" cy="123" r="20" fill="#7ff5df"/>
+  <circle cx="169" cy="123" r="8" fill="#fff"/>
+  <circle cx="251" cy="123" r="8" fill="#fff"/>
+  <path d="M171 170h78" stroke="#d8f4ff" stroke-width="10" stroke-linecap="round"/>
+  <rect x="129" y="185" width="162" height="132" rx="36" fill="#6678ea"/>
+  <rect x="159" y="211" width="102" height="62" rx="19" fill="#f4f7ff"/>
+  <circle cx="186" cy="241" r="11" fill="#ffba45"/>
+  <circle cx="234" cy="241" r="11" fill="#ff5f77"/>
+  <path d="M118 218H76c-18 0-31 14-31 31v38" fill="none" stroke="#6072d9" stroke-width="30" stroke-linecap="round"/>
+  <path d="M302 218h42c18 0 31 14 31 31v38" fill="none" stroke="#6072d9" stroke-width="30" stroke-linecap="round"/>
+  <circle cx="45" cy="299" r="25" fill="#4053b5"/>
+  <circle cx="375" cy="299" r="25" fill="#4053b5"/>
+  <path d="M164 309v28h-52m144-28v28h52" fill="none" stroke="#5063c8" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
