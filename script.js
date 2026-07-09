@@ -20,9 +20,7 @@ const ROOM_CODE_CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ANSWER_LOCK_MS = 900;
 const NEXT_QUESTION_DELAY_MS = 950;
 
-let peer = null;
-let hostConn = null;
-let hostConnections = {};
+
 let currentUser = { uid: "user_" + Math.random().toString(36).substr(2, 9) };
 
 let currentQuestion = null;
@@ -530,9 +528,30 @@ class AudioEngine {
 
 const audioEngine = new AudioEngine();
 
-/* --------------------------------- WEBRTC P2P ---------------------------------- */
+
+/* --------------------------------- FIREBASE NETWORK ---------------------------------- */
+const firebaseConfig = {
+  "apiKey": "AIzaSyB7GEG6gSDRBxKFmuo0iG_wt-IsTaDyHWU",
+  "authDomain": "test-aa50d.firebaseapp.com",
+  "databaseURL": "https://test-aa50d-default-rtdb.firebaseio.com",
+  "projectId": "test-aa50d",
+  "storageBucket": "test-aa50d.firebasestorage.app",
+  "messagingSenderId": "160629020295",
+  "appId": "1:160629020295:web:f651d69adcffb025f68a22"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
+let roomRef = null;
+
 function initializeNetwork() {
-  setConnectionStatus(true, "Mạng P2P sẵn sàng");
+  auth.signInAnonymously().then(() => {
+    currentUser.uid = auth.currentUser.uid;
+    setConnectionStatus(true, "Đã kết nối máy chủ Firebase");
+  }).catch(e => {
+    setConnectionStatus(false, "Lỗi kết nối");
+    console.error(e);
+  });
 }
 
 function setConnectionStatus(connected, text = "") {
@@ -569,21 +588,9 @@ function getBossHp() {
 function getMyPlayer() { return state.players[currentUser.uid]; }
 function isHost() { return Boolean(state.meta?.hostUid === currentUser.uid); }
 
-function broadcastState() {
-  if (!isHost()) return;
-  const stateData = { meta: state.meta, players: state.players };
-  Object.values(hostConnections).forEach(conn => {
-    if (conn.open) conn.send({ type: "state", data: stateData });
-  });
-  syncUI();
-}
-
 async function updateRoomMeta(updates) {
-  if (!isHost()) return false;
-  state.meta = { ...state.meta, ...updates };
-  broadcastState();
-  if (state.meta.status === "playing") audioEngine.setMode("battle");
-  if (state.meta.status === "waiting" || state.meta.status === "finished" || state.meta.status === "failed") audioEngine.setMode("lobby");
+  if (!isHost() || !state.roomCode) return false;
+  await db.ref('rooms/' + state.roomCode + '/meta').update(updates);
   return true;
 }
 
@@ -601,6 +608,8 @@ function normalizeRoomCode(code) {
 
 function createRoom(e) {
   e.preventDefault();
+  if(!currentUser.uid) { showToast("Đang chờ kết nối máy chủ...", "warning"); return; }
+  
   const teacherName = ui.teacherNameInput.value.trim();
   const className = ui.classNameInput.value.trim();
   const bossType = ui.bossTypeInput.value;
@@ -614,78 +623,28 @@ function createRoom(e) {
   setButtonLoading($("#createRoomForm button"), true);
   state.roomCode = generateRoomCode();
   
-  if (peer) peer.destroy();
-  peer = new Peer("class-boss-" + state.roomCode);
+  state.role = "teacher";
+  state.displayName = teacherName;
   
-  peer.on('open', (id) => {
-    state.role = "teacher";
-    state.displayName = teacherName;
-    currentUser.uid = "host_" + state.roomCode;
-    
-    state.meta = {
-      hostUid: currentUser.uid,
-      teacherName, className, bossType, maxBossHp: bossHp,
-      status: "waiting", roomLocked: false, createdAt: Date.now()
-    };
-    state.players = {};
-    
-    setupHostPeer();
-    syncUI();
+  const meta = {
+    hostUid: currentUser.uid,
+    teacherName, className, bossType, maxBossHp: bossHp,
+    status: "waiting", roomLocked: false, createdAt: Date.now()
+  };
+  
+  db.ref('rooms/' + state.roomCode + '/meta').set(meta).then(() => {
+    setupRoomListener(state.roomCode);
     showScreen("room");
     audioEngine.setMode("lobby");
     showToast(`Phòng ${state.roomCode} đã tạo thành công!`, "success");
     setButtonLoading($("#createRoomForm button"), false);
   });
-  
-  peer.on('error', (err) => {
-    showToast("Lỗi tạo phòng: " + err.message, "error");
-    setButtonLoading($("#createRoomForm button"), false);
-  });
-}
-
-function setupHostPeer() {
-  peer.on('connection', (conn) => {
-    conn.on('data', (data) => {
-      if (data.type === "join") {
-        if (state.meta.roomLocked || state.meta.status === "finished") {
-          conn.send({ type: "error", message: "Phòng đang khóa hoặc đã kết thúc." });
-          setTimeout(() => conn.close(), 1000);
-          return;
-        }
-        
-        hostConnections[data.uid] = conn;
-        state.players[data.uid] = {
-          profile: { name: data.name, avatar: data.avatar, joinedAt: Date.now() },
-          stats: { damage: 0, combo: 0, correct: 0, wrong: 0 }
-        };
-        broadcastState();
-        conn.send({ type: "welcome", uid: data.uid });
-        showToast(`Học sinh ${data.name} đã tham gia.`, "info");
-      }
-      
-      if (data.type === "attack") {
-        const player = state.players[data.uid];
-        if (!player || state.meta.status !== "playing") return;
-        
-        player.stats.damage += data.damage;
-        player.stats.correct += data.isCorrect ? 1 : 0;
-        player.stats.wrong += data.isCorrect ? 0 : 1;
-        player.stats.combo = data.combo;
-        broadcastState();
-      }
-    });
-    
-    conn.on('close', () => {
-      let disUid = Object.keys(hostConnections).find(k => hostConnections[k] === conn);
-      if (disUid) {
-         delete hostConnections[disUid];
-      }
-    });
-  });
 }
 
 function joinRoom(e) {
   e.preventDefault();
+  if(!currentUser.uid) { showToast("Đang chờ kết nối máy chủ...", "warning"); return; }
+  
   const roomCode = normalizeRoomCode(ui.roomCodeInput.value);
   const studentName = ui.studentNameInput.value.trim();
 
@@ -696,69 +655,71 @@ function joinRoom(e) {
 
   setButtonLoading($("#joinRoomForm button"), true);
   
-  if (peer) peer.destroy();
-  peer = new Peer(); 
-  
-  peer.on('open', (id) => {
-    hostConn = peer.connect("class-boss-" + roomCode);
+  db.ref('rooms/' + roomCode + '/meta').once('value').then(snap => {
+    const meta = snap.val();
+    if (!meta) {
+      showToast("Phòng không tồn tại.", "error");
+      setButtonLoading($("#joinRoomForm button"), false);
+      return;
+    }
+    if (meta.roomLocked || meta.status === "finished") {
+      showToast("Phòng đang khóa hoặc đã kết thúc.", "error");
+      setButtonLoading($("#joinRoomForm button"), false);
+      return;
+    }
     
-    hostConn.on('open', () => {
-      currentUser.uid = "player_" + id;
-      state.role = "student";
-      state.roomCode = roomCode;
-      state.displayName = studentName;
-      
-      const avatars = ["avatar_1.png", "avatar_2.png", "avatar_3.png", "avatar_4.png", "avatar_5.png", "avatar_6.png", "avatar_7.png", "avatar_8.png"];
-      const randomAvatar = "assets/avatars/" + avatars[Math.floor(Math.random() * avatars.length)];
-      
-      hostConn.send({ type: "join", uid: currentUser.uid, name: studentName, avatar: randomAvatar });
-      
+    state.role = "student";
+    state.roomCode = roomCode;
+    state.displayName = studentName;
+    
+    const avatars = ["avatar_1.png", "avatar_2.png", "avatar_3.png", "avatar_4.png", "avatar_5.png", "avatar_6.png", "avatar_7.png", "avatar_8.png"];
+    const randomAvatar = "assets/avatars/" + avatars[Math.floor(Math.random() * avatars.length)];
+    
+    const pRef = db.ref('rooms/' + roomCode + '/players/' + currentUser.uid);
+    pRef.set({
+      profile: { name: studentName, avatar: randomAvatar, joinedAt: Date.now() },
+      stats: { damage: 0, combo: 0, correct: 0, wrong: 0 }
+    }).then(() => {
+      pRef.onDisconnect().remove();
+      setupRoomListener(roomCode);
       setButtonLoading($("#joinRoomForm button"), false);
       showScreen("room");
       audioEngine.setMode("lobby");
     });
-    
-    hostConn.on('data', (msg) => {
-      if (msg.type === "state") {
-        state.meta = msg.data.meta;
-        state.players = msg.data.players;
-        
-        if (state.meta.status === "playing" && audioEngine.currentMode !== "battle") audioEngine.setMode("battle");
-        if ((state.meta.status === "waiting" || state.meta.status === "finished") && audioEngine.currentMode !== "lobby") audioEngine.setMode("lobby");
-        
-        syncUI();
-      }
-      if (msg.type === "error") {
-        showToast(msg.message, "error");
-        leaveRoom();
-      }
-    });
-    
-    hostConn.on('close', () => {
-      showToast("Mất kết nối với giáo viên.", "error");
-      leaveRoom();
-    });
   });
-  
-  peer.on('error', (err) => {
-    showToast("Không tìm thấy phòng hoặc lỗi mạng.", "error");
-    setButtonLoading($("#joinRoomForm button"), false);
+}
+
+function setupRoomListener(roomCode) {
+  if(roomRef) roomRef.off();
+  roomRef = db.ref('rooms/' + roomCode);
+  roomRef.on('value', snap => {
+    const data = snap.val();
+    if (!data) {
+      showToast("Phòng đã bị đóng.", "error");
+      leaveRoom();
+      return;
+    }
+    state.meta = data.meta || {};
+    state.players = data.players || {};
+    
+    if (state.meta.status === "playing" && audioEngine.currentMode !== "battle") audioEngine.setMode("battle");
+    if ((state.meta.status === "waiting" || state.meta.status === "finished" || state.meta.status === "failed") && audioEngine.currentMode !== "lobby") audioEngine.setMode("lobby");
+    
+    syncUI();
   });
 }
 
 function leaveRoom(manual = false) {
-  if (isHost()) {
-    Object.values(hostConnections).forEach(c => c.close());
-    hostConnections = {};
-  } else {
-    if (hostConn) hostConn.close();
-  }
-  if (peer) {
-     peer.destroy();
-     peer = null;
+  if (roomRef) roomRef.off();
+  if (state.roomCode) {
+    if (isHost()) {
+      db.ref('rooms/' + state.roomCode).remove();
+    } else {
+      db.ref('rooms/' + state.roomCode + '/players/' + currentUser.uid).remove();
+    }
   }
   
-  hostConn = null;
+  roomRef = null;
   state.roomCode = null;
   state.role = null;
   state.meta = null;
@@ -777,7 +738,11 @@ async function startGame() {
     showToast("Boss đã bị hạ gục. Vui lòng thiết lập lại trận đấu.", "warning");
     return;
   }
-  await updateRoomMeta({ status: "playing", startTime: Date.now(), durationMs: 10 * 60 * 1000 });
+  await updateRoomMeta({ 
+    status: "playing",
+    startTime: Date.now(),
+    durationMs: 10 * 60 * 1000
+  });
   showToast("Trận đấu bắt đầu!");
 }
 
@@ -794,10 +759,7 @@ async function endGame() {
 async function resetGame() {
   if (!isHost()) return;
   ui.resetGameBtn.disabled = true;
-  state.players = {}; 
-  Object.values(hostConnections).forEach(conn => conn.close());
-  hostConnections = {};
-  
+  await db.ref('rooms/' + state.roomCode + '/players').remove(); // clear players
   await updateRoomMeta({ status: "waiting" });
   audioEngine.setMode("lobby");
   showToast("Đã đặt lại trận đấu. Mọi học sinh cần vào lại phòng.", "success");
@@ -883,8 +845,17 @@ async function submitAnswer(selectedIndex, selectedButton) {
     : `Chưa đúng. Đáp án là: <strong>${escapeHtml(currentQuestion.answers[currentQuestion.correctIndex])}</strong><br/><small>${escapeHtml(currentQuestion.explanation || '')}</small>`;
   ui.answerFeedback.classList.add(isCorrect ? "good" : "bad");
 
-  if (hostConn && hostConn.open) {
-    hostConn.send({ type: "attack", uid: currentUser.uid, damage, isCorrect, combo: newCombo });
+  // Gửi sát thương lên Firebase
+  if (state.roomCode) {
+    db.ref('rooms/' + state.roomCode + '/players/' + currentUser.uid + '/stats').transaction(stats => {
+      if (stats) {
+        stats.damage += damage;
+        stats.combo = newCombo;
+        if (isCorrect) stats.correct++;
+        else stats.wrong++;
+      }
+      return stats;
+    });
   }
 
   if (isCorrect) {
@@ -898,7 +869,6 @@ async function submitAnswer(selectedIndex, selectedButton) {
     if (state.meta?.status === "playing" && getBossHp() > 0) nextQuestion();
   }, NEXT_QUESTION_DELAY_MS);
 }
-
 /* ------------------------------- SHARE --------------------------------- */
 function copyRoomCode() {
   navigator.clipboard.writeText(state.roomCode).then(() => showToast("Đã copy mã phòng!"));

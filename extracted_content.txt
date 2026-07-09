@@ -1,0 +1,158 @@
+Created At: 2026-06-26T06:49:06Z
+Completed At: 2026-06-26T06:49:06Z
+File Path: `file:///C:/Users/pc/.gemini/antigravity/scratch/realtime-boss-battle/realtime-boss-battle/script.js`
+Total Lines: 1304
+Total Bytes: 42586
+Showing lines 1 to 150
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+2: import {
+3:   getAuth,
+4:   signInAnonymously,
+5:   onAuthStateChanged,
+6:   setPersistence,
+7:   browserLocalPersistence
+8: } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+9: import {
+10:   getDatabase,
+11:   ref,
+12:   get,
+13:   set,
+14:   update,
+15:   onValue,
+16:   onDisconnect,
+17:   runTransaction,
+18:   serverTimestamp
+19: } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+20: // Removed QUESTION_BANK import to support file:/// protocol
+21: 
+22: /* --------------------------------------------------------------------------
+23:    1) FIREBASE CONFIG
+24:    Firebase Console > Project settings > Your apps > Web app > SDK setup
+25:    Thay toàn bộ giá trị bên dưới bằng config thật của dự án.
+26: ---------------------------------------------------------------------------- */
+27: const firebaseConfig = {
+28:   apiKey: "AIzaSyB7GEG6gSDRBxKFmuo0iG_wt-IsTaDyHWU",
+29:   authDomain: "test-aa50d.firebaseapp.com",
+30:   databaseURL: "https://test-aa50d-default-rtdb.firebaseio.com",
+31:   projectId: "test-aa50d",
+32:   storageBucket: "test-aa50d.firebasestorage.app",
+33:   messagingSenderId: "160629020295",
+34:   appId: "1:160629020295:web:f651d69adcffb025f68a22"
+35: };
+36: 
+37: /* --------------------------------------------------------------------------
+38:    2) OPTIONAL GENERATED AUDIO
+39:    - false: dùng nhạc/SFX tổng hợp bằng Web Audio API, chạy ngay không cần file.
+40:    - true: ưu tiên file trong assets/audio/. Nếu file lỗi, tự quay về âm thanh tổng hợp.
+41: ---------------------------------------------------------------------------- */
+42: const USE_GENERATED_AUDIO = false;
+43: const GENERATED_AUDIO = {
+44:   lobby: "assets/audio/lobby-loop.mp3",
+45:   battle: "assets/audio/battle-loop.mp3",
+46:   hit: "assets/audio/hit.mp3",
+47:   correct: "assets/audio/correct.mp3",
+48:   wrong: "assets/audio/wrong.mp3",
+49:   victory: "assets/audio/victory.mp3",
+50:   click: "assets/audio/click.mp3"
+51: };
+52: 
+53: 
+54: const BOSS_CONFIG = {
+55:   dragon: {
+56:     name: "Rồng Lửa",
+57:     image: "assets/boss-dragon.png",
+58:     fallback: "🐲"
+59:   },
+60:   robot: {
+61:     name: "Robot Khổng Lồ",
+62:     image: "assets/boss-robot.png",
+63:     fallback: "🤖"
+64:   },
+65:   slime: {
+66:     name: "Slime Vũ Trụ",
+67:     image: "assets/boss-slime.png",
+68:     fallback: "👾"
+69:   }
+70: };
+71: 
+72: const APP_SESSION_KEY = "classBossBattleSessionV1";
+73: const ROOM_CODE_CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+74: const ANSWER_LOCK_MS = 900;
+75: const NEXT_QUESTION_DELAY_MS = 950;
+76: 
+77: let app = null;
+78: let auth = null;
+79: let db = null;
+80: let currentUser = null;
+81: let unsubMeta = null;
+82: let unsubPlayers = null;
+83: let currentQuestion = null;
+84: let questionNumber = 0;
+85: let answerLocked = false;
+86: let victoryShown = false;
+87: let finishingRoom = false;
+88: let previousTotalDamage = 0;
+89: 
+90: const state = {
+91:   role: null,
+92:   roomCode: null,
+93:   displayName: null,
+94:   meta: null,
+95:   players: {},
+96:   sortedPlayers: []
+97: };
+98: 
+99: /* --------------------------------- DOM ---------------------------------- */
+100: const $ = (selector) => document.querySelector(selector);
+101: const $$ = (selector) => [...document.querySelectorAll(selector)];
+102: 
+103: const screens = {
+104:   home: $("#homeScreen"),
+105:   teacherSetup: $("#teacherSetupScreen"),
+106:   studentJoin: $("#studentJoinScreen"),
+107:   room: $("#roomScreen")
+108: };
+109: 
+110: const ui = {
+111:   configWarning: $("#configWarning"),
+112:   connectionBadge: $("#connectionBadge"),
+113:   audioBtn: $("#audioBtn"),
+114:   teacherNameInput: $("#teacherNameInput"),
+115:   classNameInput: $("#classNameInput"),
+116:   bossTypeInput: $("#bossTypeInput"),
+117:   bossHpInput: $("#bossHpInput"),
+118:   roomCodeInput: $("#roomCodeInput"),
+119:   studentNameInput: $("#studentNameInput"),
+120:   roleLabel: $("#roleLabel"),
+121:   roomClassName: $("#roomClassName"),
+122:   roomTeacherName: $("#roomTeacherName"),
+123:   roomCodeDisplay: $("#roomCodeDisplay"),
+124:   gameStatusPill: $("#gameStatusPill"),
+125:   bossNameDisplay: $("#bossNameDisplay"),
+126:   totalDamageDisplay: $("#totalDamageDisplay"),
+127:   bossImage: $("#bossImage"),
+128:   bossHpCurrent: $("#bossHpCurrent"),
+129:   bossHpMax: $("#bossHpMax"),
+130:   bossHpBar: $("#bossHpBar"),
+131:   hpTrack: $(".hp-track"),
+132:   damageFloatLayer: $("#damageFloatLayer"),
+133:   teacherControls: $("#teacherControls"),
+134:   studentGamePanel: $("#studentGamePanel"),
+135:   playerCountTeacher: $("#playerCountTeacher"),
+136:   lockRoomToggle: $("#lockRoomToggle"),
+137:   startGameBtn: $("#startGameBtn"),
+138:   pauseGameBtn: $("#pauseGameBtn"),
+139:   resetGameBtn: $("#resetGameBtn"),
+140:   endGameBtn: $("#endGameBtn"),
+141:   waitingPanel: $("#waitingPanel"),
+142:   waitingTitle: $("#waitingTitle"),
+143:   waitingMessage: $("#waitingMessage"),
+144:   quizPanel: $("#quizPanel"),
+145:   questionCategory: $("#questionCategory"),
+146:   questionCounter: $("#questionCounter"),
+147:   questionText: $("#questionText"),
+148:   answerGrid: $("#answerGrid"),
+149:   answerFeedback: $("#answerFeedback"),
+150:   myDamageDisplay: $("#myDamageDisplay"),
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
