@@ -692,9 +692,8 @@ function joinRoom(e) {
     const randomAvatarId = Math.floor(Math.random() * 8); // 0 to 7
     
     const pRef = db.ref('rooms/' + roomCode + '/players/' + currentUser.uid);
-    pRef.set({
-      profile: { name: studentName, avatar: randomAvatarId, joinedAt: Date.now() },
-      stats: { damage: 0, combo: 0, correct: 0, wrong: 0, bestCombo: 0, lastAttackAt: 0 }
+    pRef.child('profile').set({ name: studentName, avatar: randomAvatarId, joinedAt: Date.now() }).then(() => {
+      return pRef.child('stats').set({ damage: 0, combo: 0, correct: 0, wrong: 0, bestCombo: 0, lastAttackAt: 0 });
     }).then(() => {
       pRef.onDisconnect().remove();
       setupRoomListener(roomCode);
