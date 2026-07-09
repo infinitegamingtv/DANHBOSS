@@ -118,6 +118,18 @@ function showToast(message, type = "info") {
   ui.toastContainer.appendChild(toast);
 }
 
+function setButtonLoading(btn, isLoading) {
+  if (!btn) return;
+  if (isLoading) {
+    btn.dataset.originalText = btn.textContent;
+    btn.textContent = "Đang xử lý...";
+    btn.disabled = true;
+  } else {
+    if (btn.dataset.originalText) btn.textContent = btn.dataset.originalText;
+    btn.disabled = false;
+  }
+}
+
 function syncUI() {
   if (!state.roomCode) return;
 
