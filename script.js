@@ -324,7 +324,7 @@ function renderLeaderboard() {
     li.className = `lb-item ${isMe ? "me" : ""}`;
     li.innerHTML = `
       <div class="lb-rank">${rankNode}</div>
-      <img class="lb-avatar" src="${p.profile?.avatar || 'assets/avatars/avatar_1.png'}" alt="" onerror="this.style.display='none'">
+      <img class="lb-avatar" src="${typeof p.profile?.avatar === 'number' ? 'assets/avatars/avatar_' + (p.profile.avatar + 1) + '.png' : (p.profile?.avatar || 'assets/avatars/avatar_1.png')}" alt="" onerror="this.style.display='none'">
       <div class="lb-info">
         <div class="lb-name">${escapeHtml(p.profile?.name || "Ẩn danh")} ${isMe ? "(Bạn)" : ""}</div>
         <div class="lb-stats">✅ ${p.stats?.correct || 0} &nbsp; ❌ ${p.stats?.wrong || 0} ${combo}</div>
@@ -689,13 +689,12 @@ function joinRoom(e) {
     state.roomCode = roomCode;
     state.displayName = studentName;
     
-    const avatars = ["avatar_1.png", "avatar_2.png", "avatar_3.png", "avatar_4.png", "avatar_5.png", "avatar_6.png", "avatar_7.png", "avatar_8.png"];
-    const randomAvatar = "assets/avatars/" + avatars[Math.floor(Math.random() * avatars.length)];
+    const randomAvatarId = Math.floor(Math.random() * 8); // 0 to 7
     
     const pRef = db.ref('rooms/' + roomCode + '/players/' + currentUser.uid);
     pRef.set({
-      profile: { name: studentName, avatar: randomAvatar, joinedAt: Date.now() },
-      stats: { damage: 0, combo: 0, correct: 0, wrong: 0 }
+      profile: { name: studentName, avatar: randomAvatarId, joinedAt: Date.now() },
+      stats: { damage: 0, combo: 0, correct: 0, wrong: 0, bestCombo: 0, lastAttackAt: 0 }
     }).then(() => {
       pRef.onDisconnect().remove();
       setupRoomListener(roomCode);
@@ -878,6 +877,8 @@ async function submitAnswer(selectedIndex, selectedButton) {
         stats.combo = newCombo;
         if (isCorrect) stats.correct++;
         else stats.wrong++;
+        if (stats.combo > (stats.bestCombo || 0)) stats.bestCombo = stats.combo;
+        stats.lastAttackAt = Date.now();
       }
       return stats;
     });
