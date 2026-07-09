@@ -147,28 +147,28 @@ function syncUI() {
   ui.playerCountTeacher.textContent = `Số học sinh: ${state.sortedPlayers.length}`;
 
   const statusMap = {
-    waiting: { text: "Sảnh Chờ", color: "var(--warning)", bg: "rgba(253, 203, 110, 0.2)" },
+    lobby: { text: "Sảnh Chờ", color: "var(--warning)", bg: "rgba(253, 203, 110, 0.2)" },
     playing: { text: "Đang Chiến Đấu", color: "var(--success)", bg: "rgba(0, 184, 148, 0.2)" },
     paused: { text: "Tạm Dừng", color: "var(--warning)", bg: "rgba(253, 203, 110, 0.2)" },
     finished: { text: "Chiến Thắng", color: "var(--success)", bg: "rgba(0, 184, 148, 0.2)" },
     failed: { text: "Thất Bại", color: "var(--danger)", bg: "rgba(214, 48, 49, 0.2)" }
   };
-  const st = statusMap[meta.status] || statusMap.waiting;
+  const st = statusMap[meta.status] || statusMap.lobby;
   ui.gameStatusPill.textContent = st.text;
   ui.gameStatusPill.style.color = st.color;
   ui.gameStatusPill.style.backgroundColor = st.bg;
 
   if (isHostUser) {
     ui.lockRoomToggle.checked = !!meta.roomLocked;
-    ui.startGameBtn.classList.toggle("hidden", meta.status !== "waiting" && meta.status !== "paused");
+    ui.startGameBtn.classList.toggle("hidden", meta.status !== "lobby" && meta.status !== "paused");
     ui.pauseGameBtn.classList.toggle("hidden", meta.status !== "playing");
     ui.resetGameBtn.classList.toggle("hidden", meta.status !== "finished" && meta.status !== "failed" && meta.status !== "playing" && meta.status !== "paused");
-    ui.endGameBtn.classList.toggle("hidden", meta.status === "finished" || meta.status === "failed" || meta.status === "waiting");
+    ui.endGameBtn.classList.toggle("hidden", meta.status === "finished" || meta.status === "failed" || meta.status === "lobby");
   } else {
     ui.waitingPanel.classList.toggle("hidden", meta.status === "playing");
     ui.quizPanel.classList.toggle("hidden", meta.status !== "playing");
     
-    if (meta.status === "waiting") {
+    if (meta.status === "lobby") {
       ui.waitingTitle.textContent = "Đang ở Sảnh chờ";
       ui.waitingMessage.textContent = "Vui lòng chờ giáo viên bắt đầu trận đấu...";
     } else if (meta.status === "paused") {
@@ -211,7 +211,7 @@ function updateTimerDisplay() {
   
   if (gameTimerInterval) clearInterval(gameTimerInterval);
   gameTimerInterval = setInterval(() => {
-    if (!state.meta || state.meta.status === "waiting") {
+    if (!state.meta || state.meta.status === "lobby") {
        clearInterval(gameTimerInterval);
        return;
     }
@@ -641,7 +641,8 @@ function createRoom(e) {
   const meta = {
     hostUid: currentUser.uid,
     teacherName, className, bossType, maxBossHp: bossHp,
-    status: "waiting", roomLocked: false, createdAt: Date.now()
+    status: "lobby", roomLocked: false, createdAt: Date.now(),
+    bossName: BOSS_CONFIG[bossType]?.name || "Boss", startedAt: 0, endedAt: 0, hostOnline: true
   };
   
   db.ref('rooms/' + state.roomCode + '/meta').set(meta).then(() => {
@@ -649,6 +650,10 @@ function createRoom(e) {
     showScreen("room");
     audioEngine.setMode("lobby");
     showToast(`Phòng ${state.roomCode} đã tạo thành công!`, "success");
+    setButtonLoading($("#createRoomForm button"), false);
+  }).catch(e => {
+    console.error(e);
+    showToast("Không thể tạo phòng: " + e.message, "error");
     setButtonLoading($("#createRoomForm button"), false);
   });
 }
@@ -697,7 +702,15 @@ function joinRoom(e) {
       setButtonLoading($("#joinRoomForm button"), false);
       showScreen("room");
       audioEngine.setMode("lobby");
+    }).catch(e => {
+      console.error(e);
+      showToast("Lỗi tham gia: " + e.message, "error");
+      setButtonLoading($("#joinRoomForm button"), false);
     });
+  }).catch(e => {
+    console.error(e);
+    showToast("Không thể kết nối phòng: " + e.message, "error");
+    setButtonLoading($("#joinRoomForm button"), false);
   });
 }
 
@@ -715,7 +728,7 @@ function setupRoomListener(roomCode) {
     state.players = data.players || {};
     
     if (state.meta.status === "playing" && audioEngine.currentMode !== "battle") audioEngine.setMode("battle");
-    if ((state.meta.status === "waiting" || state.meta.status === "finished" || state.meta.status === "failed") && audioEngine.currentMode !== "lobby") audioEngine.setMode("lobby");
+    if ((state.meta.status === "lobby" || state.meta.status === "finished" || state.meta.status === "failed") && audioEngine.currentMode !== "lobby") audioEngine.setMode("lobby");
     
     syncUI();
   });
@@ -772,7 +785,7 @@ async function resetGame() {
   if (!isHost()) return;
   ui.resetGameBtn.disabled = true;
   await db.ref('rooms/' + state.roomCode + '/players').remove(); // clear players
-  await updateRoomMeta({ status: "waiting" });
+  await updateRoomMeta({ status: "lobby" });
   audioEngine.setMode("lobby");
   showToast("Đã đặt lại trận đấu. Mọi học sinh cần vào lại phòng.", "success");
   ui.resetGameBtn.disabled = false;
