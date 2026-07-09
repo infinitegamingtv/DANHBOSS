@@ -1,4 +1,4 @@
-export const QUESTION_BANK = [
+window.QUESTION_BANK = [
   {
     category: "Vocabulary",
     question: "Choose the correct word: She ___ photos at the weekend.",
